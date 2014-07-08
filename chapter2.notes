@@ -1,0 +1,19 @@
+Concepts 
+--------
+
+*formal semantics* 
+
+*Abstract Syntax Tree* (AST)
+
+*operation semantics*: defines how 
+a program should execute on an... 
+
+*abstract machine*: an idealized computer
+designed to explain a program's execution 
+
+a *metalanguage* (cf. mathmatical notation) 
+
+*Inferance Rules* 
+
+*enviroment*: a mapping from variable names 
+onto their values 

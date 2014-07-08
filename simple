@@ -1,0 +1,190 @@
+#!/usr/bin/ruby 
+# Simple IMperative LanguagE
+
+# build the ASTs by hand
+# Add.new(
+#	Mul.new(Num.new(1), Num.new(2)),
+#	Mul.new(Num.new(3), Num.new(4))
+# )
+
+
+# define the SIMPLE expressions as Ruby classes 
+class Num < Struct.new :value
+	# override inspect so ast_alt doesn't happen 
+	def to_s 
+		value.to_s
+	end 
+
+	def inspect 
+		"\u00ab#{self}\u00bb"
+	end 
+
+	def reducible?
+		false
+	end 
+end
+
+class Add < Struct.new :left, :right 
+	def to_s
+		"#{left} + #{right}"
+	end 
+
+	def inspect 
+		"\u00ab#{self}\u00bb"
+	end 
+
+	def reducible?
+		true 
+	end 
+
+	# reduce the left value first 
+	def reduce enviroment
+		if left.reducible? 
+			Add.new left.reduce(enviroment), right
+		elsif right.reducible? 
+			Add.new left, right.reduce(enviroment)
+		else
+			Num.new(left.value + right.value)
+		end
+	end 
+end
+
+class Mul < Struct.new :left, :right 
+	def to_s 
+		"#{left} * #{right}"
+	end 
+
+	def inspect 
+		"\u00ab#{self}\u00bb"
+	end 
+
+	def reducible?
+		true 
+	end 
+
+	def reduce enviroment 
+		if left.reducible? 
+			Mul.new left.reduce(enviroment), right 
+		elsif right.reducible?
+			Mul.new left, right.reduce(enviroment) 
+		else 
+			Num.new(left.value * right.value)
+		end
+	end 
+end 
+
+class Abs < Struct.new :expression, :enviroment
+	def step 
+		self.expression = expression.reduce enviroment 
+	end
+
+	def run 
+		while expression.reducible?
+			puts expression
+			step 
+		end 
+		puts expression 
+	end 
+end 
+
+class Boo < Struct.new :value
+	def to_s
+		value.to_s
+	end 
+
+	def inspect
+		"\u00ab#{self}\u00bb"
+	end 
+
+	def reducible?
+		false 
+	end
+
+end 
+
+class Less < Struct.new :left, :right 
+	def to_s
+		"#{left} < #{right}"
+	end 
+
+	def inspect 
+		"\u00ab#{self}\u00bb"
+	end 
+
+	def reducible?
+		true 
+	end 
+
+	def reduce enviroment
+		if left.reducible?
+			LessThan.new left.reduce(enviroment), right 
+		elsif right.reducible?
+			LessThan.new left, right.reduce(enviroment)
+		else
+			Boolean.new(left.value < right.value)
+		end 	
+	end 
+end 
+
+class Var < Struct.new :name
+	def to_s 
+		name.to_s
+	end 
+
+	def inspect 
+		"\u00ab#{self}\u00bb"
+	end 
+
+	def reducible?
+		true 
+	end 
+
+	def reduce enviroment 
+		enviroment[name]
+	end 
+end 
+
+# "it's convenient to have a special statement
+# that represents a program whose execution
+# has completed successfully" 
+
+class DoNothing
+	def to_s
+		'do-nothing'
+	end 
+
+	def inspect 
+		"\u00ab#{self}\u00bb"
+	end 
+
+	def == other_statement
+		other_statement.instance_of? DoNothing 
+	end 
+
+	def reducible?
+		false 
+	end 
+end  
+
+# Don't do this in OOP. 
+def reducible? expression
+	case expression 
+	when Num
+		false 
+	when Add, Mul
+		false 
+	end 
+end 	 
+
+ast_alt = <<AST_ALT
+  #<struct Add 
+	left=#<struct Mul 
+		left=#<struct Num value=1>, 
+		right=#<struct Num value=2>
+	>, 
+	right=#<struct Mul 
+		left=#<struct Num value=3>, 
+		right=#<struct Num value=4>
+	>
+   >
+AST_ALT
