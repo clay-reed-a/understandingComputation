@@ -73,17 +73,18 @@ class Mul < Struct.new :left, :right
 	end 
 end 
 
-class Abs < Struct.new :expression, :enviroment
+class Abs < Struct.new :statement, :enviroment
 	def step 
-		self.expression = expression.reduce enviroment 
+		self.statement, self.enviroment = statement.reduce enviroment 
 	end
 
 	def run 
-		while expression.reducible?
-			puts expression
+		while statement.reducible?
+			puts statement, enviroment
 			step 
 		end 
-		puts expression 
+
+		puts statement, enviroment
 	end 
 end 
 
@@ -117,11 +118,11 @@ class Less < Struct.new :left, :right
 
 	def reduce enviroment
 		if left.reducible?
-			LessThan.new left.reduce(enviroment), right 
+			Less.new(left.reduce(enviroment), right) 
 		elsif right.reducible?
-			LessThan.new left, right.reduce(enviroment)
+			Less.new(left, right.reduce(enviroment))
 		else
-			Boolean.new(left.value < right.value)
+			Boo.new(left.value < right.value)
 		end 	
 	end 
 end 
@@ -165,6 +166,98 @@ class DoNothing
 		false 
 	end 
 end  
+
+# non-destructively alter the enviroment 
+class Assign < Struct.new :name, :expression 
+	def to_s
+		"#{name} = #{expression}"
+	end
+
+	def inspect 
+		"\u00ab#{self}\u00bb"
+	end 
+
+	def reducible?
+		true 
+	end 
+
+	def reduce enviroment
+		if expression.reducible?
+			[Assign.new(name, expression.reduce(enviroment)), enviroment]
+		else
+			[DoNothing.new, enviroment.merge({ name => expression})] 
+		end
+	end 
+end 
+
+class If < Struct.new :cond, :conseq, :alt
+	def to_s
+		"if (#{cond}) { #{conseq} } else { #{alt} }"
+	end 
+
+	def inspect 
+		"\u00ab#{self}\u00bb"
+	end 
+
+	def reducible?
+		true 
+	end 
+
+	def reduce enviroment
+		if cond.reducible?
+			[If.new(cond.reduce(enviroment), conseq, alt), enviroment]
+		else
+			case cond
+			when Boo.new(true)
+				[conseq, enviroment]
+			when Boo.new(false) 
+				[alt, enviroment]
+			end 
+		end 
+	end 
+end 
+
+class Seq < Struct.new :first, :second
+	def to_s
+		"#{first}; #{second}"
+	end 
+
+	def inspect 
+		"\u00ab#{self}\u00bb"
+	end 
+
+	def reducible?
+		true 
+	end 
+
+	def reduce enviroment
+		case first 
+		when DoNothing.new 
+			[second, enviroment]
+		else 
+			reduced_first, reduced_enviroment = first.reduce enviroment
+			[Seq.new(reduced_first,second), reduced_enviroment]
+		end 
+	end 
+end 
+
+class While < Struct.new :cond, :body 
+	def to_s
+		"while (#{cond}) { #{body} }"
+	end 
+
+	def inspect 
+		"\u00ab#{self}\u00bb"
+	end 
+
+	def reducible?
+		true 
+	end 
+
+	def reduce enviroment
+		[If.new(cond, Seq.new(body, self), DoNothing.new), enviroment]
+	end 
+end 
 
 # Don't do this in OOP. 
 def reducible? expression
